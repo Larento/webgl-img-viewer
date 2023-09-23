@@ -1,0 +1,53 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  background-color: whitesmoke;
+  color: whitesmoke;
+  font-family: "Verdana", sans-serif;
+  font-weight: bold;
+}
+
+#tools {
+  display: flex;
+  flex-wrap: wrap;
+  position: fixed;
+  z-index: 2;
+  inset: 0 0 auto 0;
+  gap: 0.5em;
+  margin: 0;
+  padding: 0.5em;
+  list-style: none;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+#tools li {
+  padding: 1em;
+  border-radius: 1em;
+  background: #333;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#context {
+  width: 100vw;
+  height: 100vh;
+}
