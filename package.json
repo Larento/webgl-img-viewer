@@ -1,0 +1,21 @@
+{
+    "name": "webgl-img-viewer",
+    "module": "index.ts",
+    "scripts": {
+        "dev": "bun --hot src/index.ts"
+    },
+    "devDependencies": {
+        "bun-types": "latest",
+        "eslint": "^8.50.0",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "peerDependencies": {
+        "typescript": "^5.0.0"
+    },
+    "type": "module",
+    "dependencies": {
+        "@stricjs/router": "^4.2.2",
+        "@stricjs/utils": "^1.5.3"
+    }
+}
