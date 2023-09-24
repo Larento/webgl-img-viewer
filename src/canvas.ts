@@ -10,25 +10,19 @@ type WebGLShaderType =
     | WebGLRenderingContext['FRAGMENT_SHADER'];
 
 class WebGLShaderCreator {
-    context: WebGLRenderingContext;
-
-    constructor(context: WebGLRenderingContext) {
-        this.context = context;
-    }
-
-    load(source: string, type: WebGLShaderType) {
-        const shader = this.context.createShader(type);
+    static load(context: WebGLRenderingContext, source: string, type: WebGLShaderType) {
+        const shader = context.createShader(type);
         if (!shader) {
             throw new WebGLGenericError('Error creating shader.');
         }
 
-        this.context.shaderSource(shader, source);
-        this.context.compileShader(shader);
+        context.shaderSource(shader, source);
+        context.compileShader(shader);
 
-        if (!this.context.getShaderParameter(shader, WebGLRenderingContext.COMPILE_STATUS)) {
-            this.context.deleteShader(shader);
+        if (!context.getShaderParameter(shader, WebGLRenderingContext.COMPILE_STATUS)) {
+            context.deleteShader(shader);
             throw new WebGLGenericError(
-                `An error occurred compiling the shaders: ${this.context.getShaderInfoLog(shader)}`,
+                `An error occurred compiling the shaders: ${context.getShaderInfoLog(shader)}`,
             );
         }
 
@@ -36,49 +30,40 @@ class WebGLShaderCreator {
     }
 }
 
-class WrappedWebGLRenderingContext extends WebGLRenderingContext {
-    constructor(canvas: HTMLCanvasElement) {
-        try {
-            super();
-        } catch {}
+export class WebGLCustomRenderingContext {
+    context: WebGLRenderingContext;
 
+    constructor(canvas: HTMLCanvasElement) {
         const context = canvas.getContext('webgl');
         if (!context) {
             throw new WebGLGenericError(
                 'Unable to initialize WebGL. Your browser or machine may not support it.',
             );
         }
-        return context;
-    }
-}
-
-export class WebGLCustomRenderingContext extends WrappedWebGLRenderingContext {
-    shaderCreator: WebGLShaderCreator;
-
-    constructor(canvas: HTMLCanvasElement) {
-        super(canvas);
-        this.shaderCreator = new WebGLShaderCreator(this);
+        this.context = context;
     }
 
     makeShaders(vertexSource: string, fragmentSource: string) {
-        const vertexShader = this.shaderCreator.load(
+        const vertexShader = WebGLShaderCreator.load(
+            this.context,
             vertexSource,
             WebGLRenderingContext.VERTEX_SHADER,
         );
-        const fragmentShader = this.shaderCreator.load(
+        const fragmentShader = WebGLShaderCreator.load(
+            this.context,
             fragmentSource,
             WebGLRenderingContext.FRAGMENT_SHADER,
         );
-        const shaderProgram = this.createProgram();
+        const shaderProgram = this.context.createProgram();
 
         if (!shaderProgram) {
             throw new WebGLGenericError('Could not create shader program.');
         }
 
-        this.attachShader(shaderProgram, vertexShader);
-        this.attachShader(shaderProgram, fragmentShader);
-        this.linkProgram(shaderProgram);
-        this.useProgram(shaderProgram);
+        this.context.attachShader(shaderProgram, vertexShader);
+        this.context.attachShader(shaderProgram, fragmentShader);
+        this.context.linkProgram(shaderProgram);
+        this.context.useProgram(shaderProgram);
 
         return shaderProgram;
     }
