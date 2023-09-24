@@ -1,68 +1,62 @@
-import { readdir, lstat, mkdir, exists } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { Router } from '@stricjs/router';
-import { dir, file } from '@stricjs/utils';
+import { WebGLCustomRenderingContext } from './canvas';
 
-type FileAccumulatorType = { files: string[]; folders: string[] };
-const publicDir = 'public';
-const buildDir = 'build';
-
-async function getFiles(directoryPath: string): Promise<string[]> {
-    try {
-        const fileNames: string[] = [];
-        const folderNames: string[] = [''];
-
-        while (folderNames.length > 0) {
-            const currentDir = folderNames.pop() ?? '';
-            const currentFileNames = await readdir(join(directoryPath, currentDir));
-            const { files, folders } = await currentFileNames.reduce(
-                async (accumulatorPromise, fileName) => {
-                    const filePath = join(directoryPath, currentDir, fileName);
-                    const fileStat = await lstat(filePath);
-                    const accumulator = await accumulatorPromise;
-
-                    if (fileStat.isDirectory()) {
-                        accumulator.folders.push(fileName);
-                    } else {
-                        accumulator.files.push(fileName);
-                    }
-                    return accumulator;
-                },
-                Promise.resolve({ files: [], folders: [] } as FileAccumulatorType),
-            );
-            fileNames.push(...files.map((file) => join(currentDir, file)));
-            folderNames.push(...folders.map((folder) => join(currentDir, folder)));
-        }
-
-        return fileNames;
-    } catch (err) {
-        console.error(err);
-        return [];
-    }
-}
-
-async function copyFromPublicToBuild() {
-    const publicFiles = await getFiles(publicDir);
-    publicFiles.forEach(async (fileName) => {
-        const file = Bun.file(join(publicDir, fileName));
-        const outputPath = join(buildDir, fileName);
-        const dirName = dirname(outputPath);
-        const dirExists = await exists(dirName);
-
-        if (!dirExists) {
-            try {
-                await mkdir(dirName);
-            } catch {}
-        }
-
-        await Bun.write(outputPath, file);
+async function loadImage(src: string | URL): Promise<HTMLImageElement> {
+    const image = new Image();
+    image.src = src.toString();
+    return new Promise((resolve, reject) => {
+        image.onload = (e) => resolve(e.target as HTMLImageElement);
+        image.onerror = (e) => reject(e);
     });
 }
 
-await copyFromPublicToBuild();
-await Bun.build({
-    entrypoints: ['./src/client/index.ts'],
-    outdir: buildDir,
-});
+(async () => {
+    const canvas: HTMLCanvasElement | null = document.querySelector('#context');
+    if (canvas) {
+        const vertexShader = `
+            attribute vec2 position;
+            varying vec2 texCoords;
+            void main() {
+                texCoords = (position + 1.0) / 2.0;
+                texCoords.y = 0.5 - texCoords.y;
+                gl_Position = vec4(position, 0, 1.0);
+           }
+        `;
 
-export default new Router().get('/', file(`${buildDir}/index.html`)).get('/*', dir(buildDir));
+        const fragmentShader = `
+            precision highp float;
+            varying vec2 texCoords;
+            uniform sampler2D texSampler;
+            void main() {
+                gl_FragColor = texture2D(texSampler, texCoords);
+            }
+        `;
+
+        const vertices = new Float32Array([-1, -1, -1, 1, 1, 1, -1, -1, 1, 1, 1, -1]);
+        const image = await loadImage('images/giraffe-bread.jpg');
+
+        const gl = new WebGLCustomRenderingContext(canvas);
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        gl.clearColor(1.0, 0.8, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        const program = gl.makeShaders(vertexShader, fragmentShader);
+
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        const positionVecPointer = gl.getAttribLocation(program, 'position');
+        gl.vertexAttribPointer(positionVecPointer, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(positionVecPointer);
+
+        const texture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+})();

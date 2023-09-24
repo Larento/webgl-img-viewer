@@ -1,21 +1,17 @@
 {
-    "name": "webgl-img-viewer",
-    "module": "index.ts",
-    "scripts": {
-        "dev": "bun --hot src/index.ts"
-    },
-    "devDependencies": {
-        "bun-types": "latest",
-        "eslint": "^8.50.0",
-        "prettier": "^3.0.3",
-        "typescript": "^5.2.2"
-    },
-    "peerDependencies": {
-        "typescript": "^5.0.0"
-    },
-    "type": "module",
-    "dependencies": {
-        "@stricjs/router": "^4.2.2",
-        "@stricjs/utils": "^1.5.3"
-    }
+  "name": "webgl-img-viewer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5"
+  }
 }

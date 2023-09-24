@@ -21,7 +21,7 @@ Image viewer using the WebGL API.
 
 ## Development
 
-I'm using [Bun][link-bun] as a package manager / bundler / hot module reloader together with [Stric][link-stric] to serve static files from the `./build` directory. To start application run `bun dev`. This command builds the app and starts server in hot reload mode.
+I'm using [Bun][link-bun] as a package manager together with [Vite][link-vite].
 
 [link-bun]: https://bun.sh/
-[link-stric]: https://stricjs.gitbook.io/docs/basic/intro
+[link-vite]: https://vitejs.dev/
