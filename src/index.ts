@@ -1,4 +1,4 @@
-import { ImageCanvas } from './canvas';
+import { ImageCanvas } from '@/classes/image-canvas';
 
 (async () => {
     const canvasElement: HTMLCanvasElement | null = document.querySelector('#context');
