@@ -1,18 +1,21 @@
 {
-  "name": "webgl-img-viewer",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@types/node": "^20.6.5",
-    "eslint": "^8.50.0",
-    "prettier": "^3.0.3",
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5"
-  }
+    "name": "webgl-img-viewer",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "@types/node": "^20.6.5",
+        "@typescript-eslint/parser": "^6.10.0",
+        "eslint": "^8.50.0",
+        "highlight.js": "^11.9.0",
+        "prettier": "^3.0.3",
+        "stylelint": "^15.11.0",
+        "typescript": "^5.0.2",
+        "vite": "^4.4.5"
+    }
 }
