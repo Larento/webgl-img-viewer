@@ -1,0 +1,128 @@
+= Rambles
+:author: Larento
+:docdate: 2023-11-10
+:imagesdir: img
+:sectnums:
+:toc: auto
+:source-highlighter: highlight.js
+:highlightjsdir: node_modules/highlight.js/lib
+:highlightjs-languages: glsl
+// :linkcss:
+// :stylesdir: https://github.com/darshandsoni/asciidoctor-skins/blob/gh-pages/css
+// :stylesheet: adoc-colony.css
+
+This document is dedicated to jotting down some of my thoughts, concerns and capturing my learning process while I make this app.
+
+WARNING: Unfortunately, I haven't been documenting the making of the app from the start and I've already got some functionality working. So to anyone but me, this document is not as useful without the necessary context. In the future projects, I'll try to write down my thoughts in this manner from the start.
+
+
+== [2023-11-10] What seems to be the problem?
+
+I've got a basic working shader that can display images and can perform some transformations. I still, however, have some problems.
+
+
+=== Unable to render large images yet
+==== Problem
+
+:url-webgl-survey-max-texture-size: https://web3dsurvey.com/webgl/parameters/MAX_TEXTURE_SIZE
+
+For one - while the shader can display small images, it can't display anything larger than a maximum texture size in WebGL, which is 4096x4096 on pretty much all devices, I believe. Here's a link to relevant {url-webgl-survey-max-texture-size}[statistics].
+
+[NOTE]
+Peculiarly, the return value of `WebGLRenderingContext.MAX_TEXTURE_SIZE` is `3379` on my setup (macOS 10.15, Firefox 119).
+
+
+==== Solution
+
+One solution I think can work is this. Given a large image, divide the image into multiple parts and assign each part to a texture of a maximum size. This way it doesn't matter how big the image is, we can always render it. Now, a texture should be square really. But, as you can imagine, if the image is not square itself, then the outermost parts of the divided image will be of rectangular shape. We will work out the details of implementation later, however. Right now, the main idea is to divide the images into square textures leaving the edge bits as not full textures.
+
+Here, let me demonstrate what I mean:
+
+.A high resolution image may be rendered by dividing it into multiple square textures
+[align='center']
+image::1.1_dividing-large-image-into-parts.png[Dividing large image into parts, width=640]
+
+The image in the figure is divided into 12 parts: textures 0, 1, 3, 4, 6 and 7 are full, and the textures on the edge aren't.
+
+
+=== Rotational transformation skews the image
+==== Problem
+
+As you can see from the picture below I have loaded up a special image to test how the shader handles non-square aspect ratio. The image is displayed okay when no rotation is applied. Translation and zoom work as intended. But if the viewport is not square, then the image gets skewed if rotated.
+
+I think a good starting point would be to ask - why does that happen? Well, if my memory serves me right, the vertex shader uses relative coordinates to specify where the triangle is positioned in space. Therefore, when changing the viewport size the relative coordinate stays the same - to equal the same proportion of the viewport.
+
+.Rotation has skewed the aspect ratio test image
+[align='center']
+image::1.2_rotation-skews-image.png[Rotation has skewed the image, width=640]
+
+
+[#rotation-skewing-solution]
+==== Solution
+
+The way I see it is - I need to somehow incorporate the viewport size into the calculations inside the vertex shader. When the viewport gets bigger by some multiplier, divide the size by that multiplier, kinda like an inverse proportion.
+
+
+=== Goodbye
+
+With that said, I'll log off for today. I'd like to keep these entries one per day and short. There will be time to investigate these problems further tomorrow.
+
+== [2023-11-11] - [2023-11-12] Testing my theories
+
+Yesterday I've discussed some of the current fundamental problems with my app. I've also proposed some solutions to those problems. Today I want to test them out (maybe not all).
+
+
+=== Rotational transformation skews the image
+
+Let's start with this one. For my solution refer to <<#rotation-skewing-solution, this section>>. I decided to investigate the vertex shader I already had, here's the code:
+
+[source,glsl]
+----
+attribute vec2 position;
+uniform mat4 model_view_projection_matrix;
+uniform float image_aspect_ratio;
+uniform vec2 viewport_size;
+varying vec2 tex_coords;
+
+void main() {
+    float ratio = viewport_size.y / viewport_size.x;
+    tex_coords = (vec2(position.x, position.y / image_aspect_ratio) + 1.0) / 2.0;
+    gl_Position = model_view_projection_matrix * vec4(vec2(position.x * ratio, position.y), 0, 1.0);
+}
+----
+
+
+== [2025-04-26] It's been a while, hasn't it...
+
+Last time I've updated this document was more than a year ago. Admittedly, I've forgotten about this project. But recently I decided to give it another go. The problems are still the same.
+
+
+=== [FIXED] Rotational transformation skews the image
+
+In the little time since I've made a comeback I kinda fixed one of the issues we had. Now, the rotational transformation does not skew the image and preserves the aspect ratio.
+
+.Original test image
+[align='center']
+image::3.1_image-normal-orientation.png[Image in normal orientation, width=640]
+
+.Rotated test image keeps its aspect ratio
+[align='center']
+image::3.2_image-rotated-clockwise.png[Image rotated clockwise, width=640]
+
+
+=== [FIXED] Image is not displayed in real size
+
+As an added bonus, I've made it so the image is displayed at 1:1 scale on the screen, so if the image is 450 pixels wide, at scale 1 it will take up 450 pixels of screen space. This might not be good default behaviour for an image viewer, especially for super small or extra large images, but it is a great starting point - we can scale this down further in the projection matrix.
+
+
+=== [FIXED] Image looks pixelated
+
+Also, I've added ability to control image smoothing, which is basically a function to toggle texture filtering method between nearest-neighbour and bilinear.
+
+.Pixelated image (nearest-neighbour texture filtering)
+[align='center']
+image::3.3_nearest-neighbour-filtering.png[Image displayed using nearest-neighbour filtering, width=640]
+
+.Smooth image (bilinear texture filtering)
+[align='center']
+image::3.4_bilinear-filtering.png[Image displayed using bilinear filtering, width=640]
