@@ -6,17 +6,15 @@ import fragmentShaderSource from '@/shaders/image-canvas.frag?raw';
 export class ImageCanvas {
     readonly canvas: HTMLCanvasElement;
     readonly renderer: WebGLCustomRenderingContext;
-    private image: HTMLImageElement | null = null;
+    private image: HTMLImageElement;
     private program: WebGLProgram;
+    private texture: WebGLTexture | null = null;
+    private textureSmoothing: boolean = false;
 
-    zoomFactor: number = 1;
-    rotationAngle: number = 0;
-    xOffset: number = 0;
-    yOffset: number = 0;
-
-    get gl() {
-        return this.renderer.context;
-    }
+    private _zoomFactor: number = 1;
+    private _rotationAngle: number = 0;
+    private _xOffset: number = 0;
+    private _yOffset: number = 0;
 
     static get vertexShader(): string {
         return vertexShaderSource;
@@ -26,80 +24,124 @@ export class ImageCanvas {
         return fragmentShaderSource;
     }
 
+    get imageAspectRatio() {
+        return this.image.height / this.image.width;
+    }
+
+    get canvasDpi() {
+        return window.devicePixelRatio || 1;
+    }
+
+    get imageToCanvasWidthRatio() {
+        return this.image.width / (this.canvas.width / this.canvasDpi);
+    }
+
+    get imageToCanvasHeightRatio() {
+        return this.image.height / (this.canvas.height / this.canvasDpi);
+    }
+
+    get maximumImageSize() {
+        return this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE);
+    }
+
+    get rotationAngle() {
+        return this._rotationAngle;
+    }
+
+    set rotationAngle(value: number) {
+        if (Math.abs(value % (2 * Math.PI)) <= Number.EPSILON) {
+            this._rotationAngle = 0;
+        } else {
+            this._rotationAngle = value % (2 * Math.PI);
+        }
+        this.draw();
+    }
+
+    get zoomFactor() {
+        return this._zoomFactor;
+    }
+
+    set zoomFactor(value: number) {
+        this._zoomFactor = value;
+        this.draw();
+    }
+
+    get xOffset() {
+        return this._xOffset;
+    }
+
+    set xOffset(value: number) {
+        this._xOffset = value;
+        this.draw();
+    }
+
+    get yOffset() {
+        return this._yOffset;
+    }
+
+    set yOffset(value: number) {
+        this._yOffset = value;
+        this.draw();
+    }
+
+    get gl() {
+        return this.renderer.context;
+    }
+
     get modelViewProjectionMatrix(): number[] {
         const modelMatrix = Matrix.identity(4);
         const viewMatrix = Matrix.multiplyArray([
-            Matrix.translation(this.xOffset, this.yOffset, 0),
             Matrix.scaling(this.zoomFactor),
-            Matrix.rotation(this.rotationAngle),
+            Matrix.translation(this.xOffset, -this.yOffset, 0),
+            Matrix.rotationAroundZ(this.rotationAngle),
         ]);
+
+        // This is needed for when canvas is resized and to display image in real size.
         const projectionMatrix = new Matrix([
-            [1, 0, 0],
-            [0, -1, 0],
+            [this.imageToCanvasWidthRatio, 0, 0],
+            // I have no idea why this also needs the aspect ratio of the image to work correctly.
+            [0, -this.imageToCanvasHeightRatio / this.imageAspectRatio, 0],
             [0, 0, 1],
         ]).toHomogenous();
+
         return Matrix.multiplyArray([projectionMatrix, viewMatrix, modelMatrix])
             .transpose()
             .data.flat();
     }
 
-    constructor(canvas: HTMLCanvasElement) {
+    constructor(canvas: HTMLCanvasElement, image: HTMLImageElement) {
         this.canvas = canvas;
         this.renderer = new WebGLCustomRenderingContext(canvas);
         new ResizeObserver((entries) => {
             for (const entry of entries) {
-                resizeCanvasToDisplaySize(entry.target as HTMLCanvasElement);
+                const canvas = entry.target as HTMLCanvasElement;
+                [canvas.width, canvas.height] = getActualCanvasSize(canvas);
                 this.draw();
             }
         }).observe(this.canvas);
 
-        this.program = this.renderer.makeShaders(
+        this.image = image;
+        this.program = this.renderer.makeProgram(
             ImageCanvas.vertexShader,
             ImageCanvas.fragmentShader,
         );
+        // NOTE: Binding vertices array with arbitrary values before using program removes the WebGL warning about drawing without vertex attrib 0 array enabled on OpenGL platforms.
+        this.updateVerticesAttribute(new Float32Array([-1, -1, -1, 1, 1, 1, -1, -1, 1, 1, 1, -1]));
+        this.gl.useProgram(this.program);
+        this.loadImage();
     }
 
-    zoomIn() {
-        this.zoomFactor *= 1.02;
-        this.draw();
+    private updateVerticesAttribute(vertices: Float32Array) {
+        const vertexBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+
+        const positionVecPointer = this.gl.getAttribLocation(this.program, 'position');
+        this.gl.vertexAttribPointer(positionVecPointer, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.enableVertexAttribArray(positionVecPointer);
     }
 
-    zoomOut() {
-        this.zoomFactor *= 0.98;
-        this.draw();
-    }
-
-    rotateClockwise() {
-        this.rotationAngle += 0.04;
-        this.draw();
-    }
-
-    rotateAntiClockwise() {
-        this.rotationAngle -= 0.04;
-        this.draw();
-    }
-
-    moveUp() {
-        this.yOffset -= 0.01;
-        this.draw();
-    }
-
-    moveDown() {
-        this.yOffset += 0.01;
-        this.draw();
-    }
-
-    moveLeft() {
-        this.xOffset -= 0.01;
-        this.draw();
-    }
-
-    moveRight() {
-        this.xOffset += 0.01;
-        this.draw();
-    }
-
-    updateMatrixUniform() {
+    private updateMatrixUniform() {
         this.gl.uniformMatrix4fv(
             this.gl.getUniformLocation(this.program, 'model_view_projection_matrix'),
             false,
@@ -107,36 +149,36 @@ export class ImageCanvas {
         );
     }
 
-    async loadImage(src: string | URL) {
-        this.image = await loadImage(src);
+    private updateTextureFilteringParameters(enableSmoothing: boolean = false) {
+        const filteringMethod = enableSmoothing ? this.gl.LINEAR : this.gl.NEAREST;
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filteringMethod);
+    }
 
-        const aspectRatio = this.image.width / this.image.height;
+    private loadImage() {
+        const imageQuadWidth = 1;
+        const imageQuadHeight = this.imageAspectRatio;
+
         const imageVertices = new Float32Array(
             [
-                [-1, -aspectRatio],
-                [-1, +aspectRatio],
-                [+1, +aspectRatio],
-                [-1, -aspectRatio],
-                [+1, +aspectRatio],
-                [+1, -aspectRatio],
+                [-imageQuadWidth, -imageQuadHeight],
+                [-imageQuadWidth, +imageQuadHeight],
+                [+imageQuadWidth, +imageQuadHeight],
+                [-imageQuadWidth, -imageQuadHeight],
+                [+imageQuadWidth, +imageQuadHeight],
+                [+imageQuadWidth, -imageQuadHeight],
             ].flat(),
         );
-        console.log(imageVertices);
 
-        const vertexBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, imageVertices, this.gl.STATIC_DRAW);
+        this.updateVerticesAttribute(imageVertices);
+        this.gl.uniform1f(
+            this.gl.getUniformLocation(this.program, 'image_aspect_ratio'),
+            this.imageAspectRatio,
+        );
 
-        const positionVecPointer = this.gl.getAttribLocation(this.program, 'position');
-        this.gl.vertexAttribPointer(positionVecPointer, 2, this.gl.FLOAT, false, 0, 0);
-        this.gl.enableVertexAttribArray(positionVecPointer);
-
-        // const resolutionVecPointer = this.gl.getUniformLocation(this.program, 'iResolution');
-        // this.gl.uniform2fv(resolutionVecPointer, [this.image.width, this.image.height]);
-
-        const texture = this.gl.createTexture();
+        this.texture = this.gl.createTexture();
         this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
         this.gl.texImage2D(
             this.gl.TEXTURE_2D,
             0,
@@ -147,18 +189,74 @@ export class ImageCanvas {
         );
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-
+        this.updateTextureFilteringParameters(this.textureSmoothing);
         this.draw();
+    }
+
+    static async fromImage(
+        canvas: HTMLCanvasElement,
+        image_src: string | URL,
+    ): Promise<ImageCanvas> {
+        const image = await loadImage(image_src);
+        return new ImageCanvas(canvas, image);
     }
 
     draw() {
         this.updateMatrixUniform();
         this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
-        this.gl.clearColor(1.0, 0.8, 0.0, 1.0);
+        this.gl.clearColor(0.9, 0.9, 0.92, 1.0);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    }
+
+    resetView() {
+        this.zoomFactor = 1;
+        this.rotationAngle = 0;
+        this.xOffset = 0;
+        this.yOffset = 0;
+    }
+
+    zoomIn() {
+        this.zoomFactor *= 1.03;
+    }
+
+    zoomOut() {
+        this.zoomFactor *= 0.97;
+    }
+
+    getZoomedOffset(offset: number): number {
+        return offset / this.zoomFactor;
+    }
+
+    rotateClockwise() {
+        this.rotationAngle += Math.PI / 2;
+    }
+
+    rotateAntiClockwise() {
+        this.rotationAngle -= Math.PI / 2;
+    }
+
+    moveUp() {
+        this.yOffset -= this.getZoomedOffset(0.04);
+    }
+
+    moveDown() {
+        this.yOffset += this.getZoomedOffset(0.04);
+    }
+
+    moveLeft() {
+        this.xOffset += this.getZoomedOffset(0.04);
+    }
+
+    moveRight() {
+        this.xOffset -= this.getZoomedOffset(0.04);
+    }
+
+    toggleSmoothing() {
+        this.textureSmoothing = !this.textureSmoothing;
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        this.updateTextureFilteringParameters(this.textureSmoothing);
+        this.draw();
     }
 }
 
@@ -171,9 +269,8 @@ async function loadImage(src: string | URL): Promise<HTMLImageElement> {
     });
 }
 
-function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
+function getActualCanvasSize(canvas: HTMLCanvasElement): [width: number, height: number] {
     const dpr = window.devicePixelRatio || 1;
     const { width, height } = canvas.getBoundingClientRect();
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    return [Math.round(width * dpr), Math.round(height * dpr)];
 }

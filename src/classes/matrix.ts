@@ -22,11 +22,15 @@ export class Matrix {
         return mat;
     }
 
-    static scaling(factor: number): Matrix {
-        return Matrix.identity(3).multiplyByScalar(factor).toHomogenous();
+    static scaling(xFactor: number, yFactor = xFactor, zFactor = yFactor): Matrix {
+        return new Matrix([
+            [xFactor, 0, 0],
+            [0, yFactor, 0],
+            [0, 0, zFactor],
+        ]).toHomogenous();
     }
 
-    static rotation(angle: number): Matrix {
+    static rotationAroundZ(angle: number): Matrix {
         const { cos, sin } = Math;
         return new Matrix([
             [cos(angle), -sin(angle), 0],
@@ -63,6 +67,12 @@ export class Matrix {
     }
 
     toHomogenous() {
+        if (this.data.length !== 3) {
+            throw new RangeError(
+                `Only 3 dimensional matrices can be converted to homogenous coordinates.`,
+            );
+        }
+
         return new Matrix([...this.data.map((row) => [...row, 0]), [0, 0, 0, 1]]);
     }
 

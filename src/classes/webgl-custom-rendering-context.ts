@@ -11,7 +11,7 @@ export class WebGLCustomRenderingContext {
         this.context = context;
     }
 
-    makeShaders(vertexSource: string, fragmentSource: string) {
+    makeProgram(vertexSource: string, fragmentSource: string) {
         const vertexShader = WebGLShaderCreator.load(
             this.context,
             vertexSource,
@@ -31,7 +31,8 @@ export class WebGLCustomRenderingContext {
         this.context.attachShader(shaderProgram, vertexShader);
         this.context.attachShader(shaderProgram, fragmentShader);
         this.context.linkProgram(shaderProgram);
-        this.context.useProgram(shaderProgram);
+        this.context.detachShader(shaderProgram, vertexShader);
+        this.context.detachShader(shaderProgram, fragmentShader);
 
         return shaderProgram;
     }
