@@ -28,16 +28,12 @@ export class ImageCanvas {
         return this.image.height / this.image.width;
     }
 
-    get canvasDpi() {
-        return window.devicePixelRatio || 1;
-    }
-
     get imageToCanvasWidthRatio() {
-        return this.image.width / (this.canvas.width / this.canvasDpi);
+        return this.image.width / this.canvas.clientWidth;
     }
 
     get imageToCanvasHeightRatio() {
-        return this.image.height / (this.canvas.height / this.canvasDpi);
+        return this.image.height / this.canvas.clientHeight;
     }
 
     get maximumImageSize() {
