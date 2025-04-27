@@ -1,0 +1,14 @@
+{
+    "editor.wordWrap": "bounded",
+    "editor.wordWrapColumn": 120,
+    "editor.rulers": [120],
+    "[typescript]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "always",
+            "source.sortImports": "always",
+            "source.removeUnusedImports": "always",
+            "source.addMissingImports.ts": "always"
+        }
+    }
+}
