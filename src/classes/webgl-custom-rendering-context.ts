@@ -1,25 +1,21 @@
-export class WebGLCustomRenderingContext {
-    context: WebGLRenderingContext;
+export class WebGl2CustomRenderingContext {
+    context: WebGL2RenderingContext;
 
     constructor(canvas: HTMLCanvasElement) {
-        const context = canvas.getContext('webgl');
+        const context = canvas.getContext('webgl2');
         if (!context) {
-            throw new WebGLGenericError('Unable to initialize WebGL. Your browser or machine may not support it.');
+            throw new WebGlGenericError('Unable to initialize WebGL. Your browser or machine may not support it.');
         }
         this.context = context;
     }
 
     makeProgram(vertexSource: string, fragmentSource: string) {
-        const vertexShader = WebGLShaderCreator.load(this.context, vertexSource, WebGLRenderingContext.VERTEX_SHADER);
-        const fragmentShader = WebGLShaderCreator.load(
-            this.context,
-            fragmentSource,
-            WebGLRenderingContext.FRAGMENT_SHADER,
-        );
+        const vertexShader = WebGlShaderCreator.load(this.context, vertexSource, this.context.VERTEX_SHADER);
+        const fragmentShader = WebGlShaderCreator.load(this.context, fragmentSource, this.context.FRAGMENT_SHADER);
         const shaderProgram = this.context.createProgram();
 
         if (!shaderProgram) {
-            throw new WebGLGenericError('Could not create shader program.');
+            throw new WebGlGenericError('Could not create shader program.');
         }
 
         this.context.attachShader(shaderProgram, vertexShader);
@@ -32,29 +28,29 @@ export class WebGLCustomRenderingContext {
     }
 }
 
-type WebGLShaderType = WebGLRenderingContext['VERTEX_SHADER'] | WebGLRenderingContext['FRAGMENT_SHADER'];
+type WebGl2ShaderType = WebGL2RenderingContext['VERTEX_SHADER'] | WebGL2RenderingContext['FRAGMENT_SHADER'];
 
-class WebGLShaderCreator {
-    static load(context: WebGLRenderingContext, source: string, type: WebGLShaderType) {
+class WebGlShaderCreator {
+    static load(context: WebGL2RenderingContext, source: string, type: WebGl2ShaderType) {
         const shader = context.createShader(type);
         if (!shader) {
-            throw new WebGLGenericError('Error creating shader.');
+            throw new WebGlGenericError('Error creating shader.');
         }
 
         context.shaderSource(shader, source);
         context.compileShader(shader);
 
-        if (!context.getShaderParameter(shader, WebGLRenderingContext.COMPILE_STATUS)) {
+        if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
             const shaderInfoLog = context.getShaderInfoLog(shader);
             context.deleteShader(shader);
-            throw new WebGLGenericError(`An error occurred compiling the shaders: ${shaderInfoLog}`);
+            throw new WebGlGenericError(`An error occurred compiling the shaders: ${shaderInfoLog}`);
         }
 
         return shader;
     }
 }
 
-class WebGLGenericError extends Error {
+class WebGlGenericError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'WebGlGenericError';

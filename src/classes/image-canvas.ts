@@ -1,11 +1,11 @@
 import { Matrix } from '@/classes/matrix';
-import { WebGLCustomRenderingContext } from '@/classes/webgl-custom-rendering-context';
+import { WebGl2CustomRenderingContext } from '@/classes/webgl-custom-rendering-context';
 import fragmentShaderSource from '@/shaders/image-canvas.frag?raw';
 import vertexShaderSource from '@/shaders/image-canvas.vert?raw';
 
 export class ImageCanvas {
     readonly canvas: HTMLCanvasElement;
-    readonly renderer: WebGLCustomRenderingContext;
+    readonly renderer: WebGl2CustomRenderingContext;
     private image: HTMLImageElement;
     private program: WebGLProgram;
     private texture: WebGLTexture | null = null;
@@ -18,7 +18,7 @@ export class ImageCanvas {
 
     constructor(canvas: HTMLCanvasElement, image: HTMLImageElement) {
         this.canvas = canvas;
-        this.renderer = new WebGLCustomRenderingContext(canvas);
+        this.renderer = new WebGl2CustomRenderingContext(canvas);
         new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const canvas = entry.target as HTMLCanvasElement;
