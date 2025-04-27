@@ -4,19 +4,13 @@ export class WebGLCustomRenderingContext {
     constructor(canvas: HTMLCanvasElement) {
         const context = canvas.getContext('webgl');
         if (!context) {
-            throw new WebGLGenericError(
-                'Unable to initialize WebGL. Your browser or machine may not support it.',
-            );
+            throw new WebGLGenericError('Unable to initialize WebGL. Your browser or machine may not support it.');
         }
         this.context = context;
     }
 
     makeProgram(vertexSource: string, fragmentSource: string) {
-        const vertexShader = WebGLShaderCreator.load(
-            this.context,
-            vertexSource,
-            WebGLRenderingContext.VERTEX_SHADER,
-        );
+        const vertexShader = WebGLShaderCreator.load(this.context, vertexSource, WebGLRenderingContext.VERTEX_SHADER);
         const fragmentShader = WebGLShaderCreator.load(
             this.context,
             fragmentSource,
@@ -38,9 +32,7 @@ export class WebGLCustomRenderingContext {
     }
 }
 
-type WebGLShaderType =
-    | WebGLRenderingContext['VERTEX_SHADER']
-    | WebGLRenderingContext['FRAGMENT_SHADER'];
+type WebGLShaderType = WebGLRenderingContext['VERTEX_SHADER'] | WebGLRenderingContext['FRAGMENT_SHADER'];
 
 class WebGLShaderCreator {
     static load(context: WebGLRenderingContext, source: string, type: WebGLShaderType) {
@@ -55,9 +47,7 @@ class WebGLShaderCreator {
         if (!context.getShaderParameter(shader, WebGLRenderingContext.COMPILE_STATUS)) {
             const shaderInfoLog = context.getShaderInfoLog(shader);
             context.deleteShader(shader);
-            throw new WebGLGenericError(
-                `An error occurred compiling the shaders: ${shaderInfoLog}`,
-            );
+            throw new WebGLGenericError(`An error occurred compiling the shaders: ${shaderInfoLog}`);
         }
 
         return shader;

@@ -3,9 +3,7 @@ import { ImageCanvas } from '@/classes/image-canvas';
 (async () => {
     let imageCanvas: ImageCanvas;
     const canvasElement: HTMLCanvasElement | null = document.querySelector('#context');
-    const imageInputElement: HTMLInputElement | null = document.querySelector(
-        '#tools #upload-image input',
-    );
+    const imageInputElement: HTMLInputElement | null = document.querySelector('#tools #upload-image input');
 
     if (canvasElement) {
         const images = [
@@ -26,10 +24,7 @@ import { ImageCanvas } from '@/classes/image-canvas';
                 reader.addEventListener(
                     'load',
                     async () => {
-                        imageCanvas = await ImageCanvas.fromImage(
-                            canvasElement,
-                            reader.result as string,
-                        );
+                        imageCanvas = await ImageCanvas.fromImage(canvasElement, reader.result as string);
                     },
                     false,
                 );

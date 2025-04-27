@@ -28,20 +28,14 @@ export class ImageCanvas {
         }).observe(this.canvas);
 
         this.image = image;
-        this.program = this.renderer.makeProgram(
-            ImageCanvas.vertexShader,
-            ImageCanvas.fragmentShader,
-        );
+        this.program = this.renderer.makeProgram(ImageCanvas.vertexShader, ImageCanvas.fragmentShader);
         // NOTE: Binding vertices array with arbitrary values before using program removes the WebGL warning about drawing without vertex attrib 0 array enabled on OpenGL platforms.
         this.updateVerticesAttribute(new Float32Array([-1, -1, -1, 1, 1, 1, -1, -1, 1, 1, 1, -1]));
         this.gl.useProgram(this.program);
         this.loadImage();
     }
 
-    static async fromImage(
-        canvas: HTMLCanvasElement,
-        image_src: string | URL,
-    ): Promise<ImageCanvas> {
+    static async fromImage(canvas: HTMLCanvasElement, image_src: string | URL): Promise<ImageCanvas> {
         const image = await loadImage(image_src);
         return new ImageCanvas(canvas, image);
     }
@@ -188,9 +182,7 @@ export class ImageCanvas {
             [0, 0, 1],
         ]).toHomogenous();
 
-        return Matrix.multiplyArray([projectionMatrix, viewMatrix, modelMatrix])
-            .transpose()
-            .data.flat();
+        return Matrix.multiplyArray([projectionMatrix, viewMatrix, modelMatrix]).transpose().data.flat();
     }
 
     private loadImage() {
@@ -209,22 +201,12 @@ export class ImageCanvas {
         );
 
         this.updateVerticesAttribute(imageVertices);
-        this.gl.uniform1f(
-            this.gl.getUniformLocation(this.program, 'image_aspect_ratio'),
-            this.imageAspectRatio,
-        );
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'image_aspect_ratio'), this.imageAspectRatio);
 
         this.texture = this.gl.createTexture();
         this.gl.activeTexture(this.gl.TEXTURE0);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        this.gl.texImage2D(
-            this.gl.TEXTURE_2D,
-            0,
-            this.gl.RGBA,
-            this.gl.RGBA,
-            this.gl.UNSIGNED_BYTE,
-            this.image,
-        );
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
         this.updateTextureFilteringParameters(this.textureSmoothing);

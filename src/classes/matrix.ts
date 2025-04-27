@@ -8,9 +8,7 @@ export class Matrix {
 
     static identity(size = 4): Matrix {
         return new Matrix(
-            Array.from(Array(size), (_, row) =>
-                Array.from(Array(size), (_, column) => (row === column ? 1 : 0)),
-            ),
+            Array.from(Array(size), (_, row) => Array.from(Array(size), (_, column) => (row === column ? 1 : 0))),
         );
     }
 
@@ -43,10 +41,7 @@ export class Matrix {
         const firstMat = matArray[0];
         return matArray
             .slice(1)
-            .reduce(
-                (multipliedMatrix, currentMatrix) => multipliedMatrix.multiply(currentMatrix),
-                firstMat,
-            );
+            .reduce((multipliedMatrix, currentMatrix) => multipliedMatrix.multiply(currentMatrix), firstMat);
     }
 
     constructor(data: MatrixData) {
@@ -68,9 +63,7 @@ export class Matrix {
 
     toHomogenous() {
         if (this.data.length !== 3) {
-            throw new RangeError(
-                `Only 3 dimensional matrices can be converted to homogenous coordinates.`,
-            );
+            throw new RangeError(`Only 3 dimensional matrices can be converted to homogenous coordinates.`);
         }
 
         return new Matrix([...this.data.map((row) => [...row, 0]), [0, 0, 0, 1]]);
