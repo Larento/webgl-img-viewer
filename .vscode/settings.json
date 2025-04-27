@@ -2,6 +2,8 @@
     "editor.wordWrap": "bounded",
     "editor.wordWrapColumn": 120,
     "editor.rulers": [120],
+    "asciidoc.preview.useEditorStyle": false,
+    "asciidoc.preview.style": "https://larento.github.io/asciidoctor-skins/css/adoc-golo.css",
     "[typescript]": {
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
