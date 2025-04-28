@@ -7,9 +7,7 @@
 :source-highlighter: highlight.js
 :highlightjsdir: node_modules/highlight.js/lib
 :highlightjs-languages: glsl
-// :linkcss:
-// :stylesdir: https://github.com/darshandsoni/asciidoctor-skins/blob/gh-pages/css
-// :stylesheet: adoc-colony.css
+:stem:
 
 This document is dedicated to jotting down some of my thoughts, concerns and capturing my learning process while I make this app.
 
@@ -31,7 +29,7 @@ For one - while the shader can display small images, it can't display anything l
 [NOTE]
 Peculiarly, the return value of `WebGLRenderingContext.MAX_TEXTURE_SIZE` is `3379` on my setup (macOS 10.15, Firefox 119).
 
-
+[#large-image-rendering-solution]
 ==== Solution
 
 One solution I think can work is this. Given a large image, divide the image into multiple parts and assign each part to a texture of a maximum size. This way it doesn't matter how big the image is, we can always render it. Now, a texture should be square really. But, as you can imagine, if the image is not square itself, then the outermost parts of the divided image will be of rectangular shape. We will work out the details of implementation later, however. Right now, the main idea is to divide the images into square textures leaving the edge bits as not full textures.
@@ -126,3 +124,28 @@ image::3.3_nearest-neighbour-filtering.png[Image displayed using nearest-neighbo
 .Smooth image (bilinear texture filtering)
 [align='center']
 image::3.4_bilinear-filtering.png[Image displayed using bilinear filtering, width=640]
+
+
+== [2025-04-27] More things to do
+
+After a high that was yesterday, I realize that my work is still not finished here. The goal of this tool is being able to handle large images (8k and above). Primarily I want this to view high quality PCB scans. To handle such large images the we have to act a lot smarter with what we have.
+
+For one - I don't think loading the whole image in one texture does us any good. Let's think about this. When you first open an image you typically want it to be fitted to viewport, so that you get a high level overview. Only then you pick a spot you want to zoom into. From a technical standpoint, the image is downsampled at first, because image pixels physically cannot fit into canvas space. When you start zooming into the image, you get closer to the real scale of image pixels, until the visible image pixels exactly match canvas space. At this point the image is neither downsampled, nor upsampled. If you go further, the image pixels cannot be mapped to canvas space without leaving gaps (there's not enough pixels), so the image is upsampled. Notice that at each scale level below 1 the image does not have to have its original resolution to be displayed correctly, since it will be downsampled anyway.
+
+We can ease the burden of downsampling on the GPU by using mipmaps. Mipmaps are generated sequences of images, where each consecutive image has half the resolution of the previous image and the first image is the original one.
+
+Another common optimisation trick is one we've probably all noticed at some point in image viewing software. Only the visible part of the image is loaded in full resolution, the surrounding parts of the image are loaded from low resolution mipmap. This is why when moving or zooming too fast we can see pixelation for a split second or longer, depending on your device's performance.
+
+Last, but definitely not least is using multiple textures to display an image. A maximum texture size is stem:[s_t] chosen (usually a power of 2). The image with resolution stem:[w_i] and stem:[h_i] is then divided into stem:[n = ceil(w_i / s_t) * ceil(h_i / s_t)] parts.
+
+.Based on example pictured in <<#large-image-rendering-solution, this section>>:
+[stem]
+++++
+s_t = 4096 \text{ px};
+w_i = 10000 \text{ px};
+h_i = 12500 \text{ px};\
+n = ceil(10000 / 4096) * ceil(12500 / 4096) = 3 * 4 = 12.
+++++
+
+Summarising this, I think we can make use of splitting image into chunks, with each chunk having a separate texture. In terms of implementation - WebGL 2 (OpenGL ES 3.0) provides a texture array primitive, which we can use for this purpose. Also, for each texture we can generate mipmaps using `WebGLRenderingContext.generateMipmap()` method and then enable mipmap filtering in texture parameters.
+
